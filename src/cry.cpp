@@ -40,8 +40,7 @@ std::string cry_help =
 
 std::string cry_info = "cry_use.txt";
 
-std::string end_header =
-"----------------------------------------------------------------\n"
+std::string end_header = "----------------------------------------------------------------\n";
 
 bool
 open_ifile(const char* in_nm, std::ifstream& in_stm){
