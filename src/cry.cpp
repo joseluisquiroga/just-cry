@@ -17,13 +17,13 @@ DEFINE_MEM_STATS;
 char* cry_vr_msg = NULL_PT;
 long cry_vr_msg_sz = 0; 
 
-std::string cry_vr4_msg =
+ch_string cry_vr4_msg =
 "cry v4\n"
 "https://github.com/joseluisquiroga/just-cry\n"
 "(c) 2025. QUIROGA BELTRAN, Jose Luis. Bogota - Colombia.\n"
 ;
 
-std::string cry_help =
+ch_string cry_help =
 "cry4 <file_name> [-e|-d|-h|-v] [-x][-r]\n"
 "\n"
 "-e : encrypt the given <file_name>. (default option).\n"
@@ -38,9 +38,9 @@ std::string cry_help =
 "visit 'https://github.com/joseluisquiroga/just-cry'\n"
 ;
 
-std::string cry_info = "cry_use.txt";
+ch_string cry_info = "cry_use.txt";
 
-std::string end_header = "----------------------------------------------------------------\n";
+ch_string end_header = "----------------------------------------------------------------\n";
 
 bool
 open_ifile(const char* in_nm, std::ifstream& in_stm){
@@ -618,11 +618,11 @@ sha_bytes_of_arr(uchar_t* to_sha, long to_sha_sz, row<uchar_t>& the_sha){
 	TOOLS_CK((uchar_t*)(the_sha.get_c_array()) == sha_arr);
 }
 
-std::string 
+ch_string 
 sha_txt_of_arr(uchar_t* to_sha, long to_sha_sz){
 	row<uchar_t>	the_sha;
 	sha_bytes_of_arr(to_sha, to_sha_sz, the_sha);
-	std::string sha_txt = the_sha.as_hex_str();
+	ch_string sha_txt = the_sha.as_hex_str();
 	return sha_txt;
 }
 
@@ -643,15 +643,41 @@ cry_encryptor::print_sha(){
 	pt_file_data = read_file(in_stm, file_data_sz); 
 
 	if(pt_file_data == NULL_PT){
-		os << "Could not read file " << input_file_nm << std::endl;
+		std::cerr << "Could not read file " << input_file_nm << std::endl;
 		return;
 	}
 
 	//unsigned char* cry_sha = sha_arr;
 	//sha2((unsigned char*)pt_file_data, file_data_sz, cry_sha, 0);
 
-	std::string sha_str1 = sha_txt_of_arr((unsigned char*)pt_file_data, file_data_sz);
+	ch_string sha_str1 = sha_txt_of_arr((unsigned char*)pt_file_data, file_data_sz);
 	os << "SHA_256=" << sha_str1 << std::endl;
+}
+
+long parse_long(const char*& pt_in, long line) {
+	long	val = 0;
+	bool	neg = false;
+
+	if(*pt_in == '-'){ neg = true; pt_in++; }
+	else if(*pt_in == '+'){ pt_in++; }
+
+	if(! isdigit(*pt_in)){
+		std::cerr << "Could not parse long " << pt_in << std::endl;
+		return 0;
+		//throw parse_exception(pax_bad_int, (char)(*pt_in), line);
+	}
+	while(isdigit(*pt_in)){
+		val = val*10 + (*pt_in - '0');
+		pt_in++;
+	}
+	return (neg)?(-val):(val);
+}
+
+long parse_long_str(ch_string& in_str){
+	long line = 0;
+	const char* pt_in = in_str.c_str();
+	long vv = parse_long(pt_in, line);
+	return vv;
 }
 
 void	
@@ -667,7 +693,7 @@ cry_encryptor::get_args(int argc, char** argv)
 	cry_vr_msg_sz = cry_vr4_msg.size();
 
 	for(long ii = 1; ii < argc; ii++){
-		std::string the_arg = argv[ii];
+		ch_string the_arg = argv[ii];
 		if(strcmp(argv[ii], "-h") == 0){
 			prt_help = true;
 		} else if(strcmp(argv[ii], "-v") == 0){
@@ -707,6 +733,8 @@ cry_encryptor_main(int argc, char** argv){
 	if(cry_engine.prt_help){
 		os << cry_help << std::endl;
 		os << "sizeof(long) = " << sizeof(long) << std::endl; 
+		//long val = 123456789123;
+		//os << "val_long = " << val << std::endl; 
 		//os << "cry_vr_msg_sz = " << cry_vr_msg_sz << std::endl;
 		//sha2_self_test(1);
 		return;

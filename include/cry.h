@@ -44,6 +44,8 @@ Base classes and abstract data types to code the system.
 #define wrt_val(stm, val) stm.write((char*)(&val), sizeof(val))
 #define rd_val(stm, val) stm.read((char*)(&val), sizeof(val))
 
+typedef std::string ch_string;
+
 extern char* version_msg;
 
 bool	open_ifile(const char* in_nm, std::ifstream& in_stm);
@@ -75,7 +77,7 @@ public:
 	bool				as_hex;
 	bool				just_sha;
 
-	std::string			input_file_nm;
+	ch_string			input_file_nm;
 	secure_row<t_1byte>		key;
 
 	bool				prt_help;
@@ -235,8 +237,8 @@ public:
 		if(! has_key() || ! has_target()){
 			return;
 		}
-		std::string o_nm;
-		std::string encry_ext = ".encry";
+		ch_string o_nm;
+		ch_string encry_ext = ".encry";
 		if(encry){
 			o_nm = input_file_nm + encry_ext;
 			write_encry_file(o_nm.c_str());
