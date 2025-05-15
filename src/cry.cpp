@@ -17,30 +17,25 @@ DEFINE_MEM_STATS;
 char* cry_vr_msg = NULL_PT;
 long cry_vr_msg_sz = 0; 
 
-std::string cry_vr1_msg =
-"cry-encryptor v1.0\n"
-"http://yosolosoy.com/esp/cry/\n"
-"(c) 2007. QUIROGA BELTRAN, Jose Luis. Bogota - Colombia.\n"
-;
-
 std::string cry_vr2_msg =
-"cry-encryptor v2.0\n"
-"http://yosolosoy.com/esp/cry/\n"
-"(c) 2009. QUIROGA BELTRAN, Jose Luis. Bogota - Colombia.\n"
+"cry-encryptor v2.5\n"
+"https://github.com/joseluisquiroga/just-cry\n"
+"(c) 2025. QUIROGA BELTRAN, Jose Luis. Bogota - Colombia.\n"
 ;
 
 std::string cry_help =
-"cry <file_name> [-e|-d|-h|-v] [-r]\n"
+"cry <file_name> [-e|-d|-h|-v] [-x][-r]\n"
 "\n"
 "-e : encrypt the given <file_name>. (default option).\n"
 "-d : decrypt the given <file_name>.\n"
 "-h : show invocation info.\n"
 "-v : show version info.\n"
 "\n"
+"-x : output as text in hex.\n"
 "-r : raw process (-e|-d) the given <file_name>.\n"
 "\n"
 "See file 'cry_use.txt' in the source directory or\n"
-"visit 'http://yosolosoy.com/esp/cry/'\n"
+"visit 'https://github.com/joseluisquiroga/just-cry'\n"
 ;
 
 std::string cry_info = "cry_use.txt";
@@ -303,6 +298,10 @@ cry_encryptor::init_key(){
 	if(key.size() < min_sz){
 		os << "Minimum key size is " << min_sz << "." << std::endl;
 		key.clear(true, true);
+		key_bits.clear(true, true);
+		key_longs.clear(true, true);
+		CRY_CK(! has_key());
+		return;
 	}
 
 	key.init_s_bit_row(key_bits);
@@ -317,6 +316,10 @@ cry_encryptor::init_tak_maks(){
 		return;
 	}
 
+	if(key_longs.size() == 1){
+		os << "WARNING. Using MINIMUM key size !!!" << std::endl;
+	}
+	
 	if(key_longs.size() == 1){
 		for_bytes.init_with_long(key_longs[0]);
 	} else {
@@ -615,13 +618,12 @@ cry_encryptor::get_args(int argc, char** argv)
 		std::string the_arg = argv[ii];
 		if(strcmp(argv[ii], "-h") == 0){
 			prt_help = true;
-		} else if(strcmp(argv[ii], "-1") == 0){
-			cry_vr_msg = (char*)(cry_vr1_msg.c_str());
-			cry_vr_msg_sz = cry_vr1_msg.size();
 		} else if(strcmp(argv[ii], "-v") == 0){
 			prt_version = true;
 		} else if(strcmp(argv[ii], "-r") == 0){
 			with_sha = false;
+		} else if(strcmp(argv[ii], "-x") == 0){
+			as_hex = true;
 		} else if(strcmp(argv[ii], "-d") == 0){
 			encry = false;
 		} else if((strcmp(argv[ii], "-k") == 0) && ((ii + 1) < argc)){
@@ -650,6 +652,7 @@ cry_encryptor_main(int argc, char** argv){
 
 	if(cry_engine.prt_help){
 		os << cry_help << std::endl;
+		os << "sizeof(long) = " << sizeof(long) << std::endl;
 		return;
 	}
 	if(cry_engine.prt_version){
@@ -679,3 +682,42 @@ int	main(int argc, char** argv){
 // lin
 // ioctl()
 
+/*
+	AFTER encrypt
+		byte[] hex_enc_dat = convert.bytes_to_hex_bytes(enc_dat);
+		
+	BEFORE decrypt
+		byte[] enc_dat = convert.hex_bytes_to_bytes(hex_enc);
+
+	public static byte[] bytes_to_hex_bytes(byte[] the_bytes) {
+		assert (the_bytes != null);
+		int hx_sz = the_bytes.length * 2;
+		byte[] hx_bytes = new byte[hx_sz];
+		for (int ii = 0; ii < the_bytes.length; ii++) {
+			String hx_str = String.format("%02x", the_bytes[ii]);
+			byte[] hx_val = hx_str.getBytes();
+			assert (hx_val.length == 2);
+			hx_bytes[ii * 2] = hx_val[0];
+			hx_bytes[(ii * 2) + 1] = hx_val[1];
+		}
+		return hx_bytes;
+	}
+
+	public static byte[] hex_bytes_to_bytes(byte[] the_hx_bytes) {
+		assert (the_hx_bytes != null);
+		if ((the_hx_bytes.length % 2) != 0) {
+			throw new bad_emetcode(2, L.invalid_length);
+		}
+		int bytes_sz = the_hx_bytes.length / 2;
+		byte[] the_bytes = new byte[bytes_sz];
+		for (int ii = 0; ii < the_bytes.length; ii++) {
+			byte b1 = the_hx_bytes[ii * 2];
+			byte b2 = the_hx_bytes[(ii * 2) + 1];
+			the_bytes[ii] = calc_val_byte(b1, b2);
+		}
+		return the_bytes;
+	}
+
+
+
+*/

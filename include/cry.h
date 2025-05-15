@@ -72,6 +72,7 @@ private:
 public:
 	bool				with_sha;
 	bool				encry;
+	bool				as_hex;
 
 	std::string			input_file_nm;
 	secure_row<t_1byte>		key;
@@ -84,6 +85,8 @@ public:
 
 		with_sha = true;
 		encry = true;
+		as_hex = false;
+		
 		bits_part = false;
 
 		pt_file_data = NULL_PT;
@@ -172,7 +175,7 @@ public:
 
 	void	bit_oper(long oper){
 		long v_op = opers[oper];
-		target_bits.swap(v_op, oper);
+		target_bits.swap(v_op, oper);		// FIX. ONLY SWAPS BITS in the first target_bytes.size() BITS !!!
 	}
 
 	void	encry_bytes(){
