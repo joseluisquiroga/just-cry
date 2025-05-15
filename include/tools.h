@@ -48,6 +48,8 @@ enum tool_exception_code {
 #define NUM_BYTES_IN_KBYTE	1024
 
 // 'integer' must be of a signed type
+typedef std::string 	ch_string;
+
 typedef long			integer;
 typedef integer			row_index;
 typedef char			comparison;

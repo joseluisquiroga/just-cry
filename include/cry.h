@@ -44,11 +44,11 @@ Base classes and abstract data types to code the system.
 #define wrt_val(stm, val) stm.write((char*)(&val), sizeof(val))
 #define rd_val(stm, val) stm.read((char*)(&val), sizeof(val))
 
-typedef std::string ch_string;
-
 extern char* version_msg;
 
 bool	open_ifile(const char* in_nm, std::ifstream& in_stm);
+ch_string sha_txt_of_arr(uchar_t* to_sha, long to_sha_sz);
+
 
 class cry_encryptor {
 private:
@@ -63,12 +63,12 @@ private:
 	s_bit_row			key_bits;
 	s_row<unsigned long>		key_longs;
 
-	secure_row<long>		opers;
+	secure_row<long>	opers;
 
 	t_1byte*			pt_file_data;
 	long				file_data_sz;
 
-	s_row<t_1byte>			target_bytes;
+	s_row<t_1byte>		target_bytes;
 	s_bit_row			target_bits;
 
 public:
@@ -79,22 +79,25 @@ public:
 
 	ch_string			input_file_nm;
 	secure_row<t_1byte>		key;
+	
+	ch_string			target_sha;
 
 	bool				prt_help;
 	bool				prt_version;
 
 	cry_encryptor(){
 		input_file_nm = "";
+		bits_part = false;
 
 		with_sha = true;
 		encry = true;
 		as_hex = false;
 		just_sha = false;
 		
-		bits_part = false;
-
 		pt_file_data = NULL_PT;
 		file_data_sz = 0;
+		
+		target_sha = "";
 
 		prt_help = false;
 		prt_version = false;
@@ -227,7 +230,9 @@ public:
 		if(encry){
 			encry_bytes();
 			encry_bits();
+			target_sha = sha_txt_of_arr((uchar_t*)target_bytes.get_data(), target_bytes.size());
 		} else {
+			target_sha = sha_txt_of_arr((uchar_t*)target_bytes.get_data(), target_bytes.size());
 			decry_bits();
 			decry_bytes();
 		}
@@ -274,6 +279,9 @@ public:
 	bool	has_input(){
 		return (input_stm.good() && input_stm.is_open());
 	}
+	
+	void 	init_encry_txt_header(row<char>& txt_hd);
+	void 	init_decry_txt_header(row<char>& txt_hd);
 	
 	void 	print_sha();
 

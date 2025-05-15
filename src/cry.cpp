@@ -12,6 +12,8 @@ cry encryptor functions. no-trace style encryptor.
 #include "cry.h"
 #include "sha2.h"
 
+typedef std::ostringstream bj_ostr_stream;
+
 DEFINE_MEM_STATS;
 
 char* cry_vr_msg = NULL_PT;
@@ -40,7 +42,11 @@ ch_string cry_help =
 
 ch_string cry_info = "cry_use.txt";
 
-ch_string end_header = "----------------------------------------------------------------\n";
+ch_string sha_field = "sha256=\n";
+ch_string data_size_field = "data_size=\n";
+ch_string end_header = "<<<END_OF_HEADER>>>\n";
+
+int WITH_SHA_TOP_HEADER_SZ = 500; // num bytes top header
 
 bool
 open_ifile(const char* in_nm, std::ifstream& in_stm){
@@ -65,7 +71,9 @@ char*	read_file(std::ifstream& in_stm, long& data_sz,
 
 	data_sz = (t_dword)file_sz + head_sz + tail_sz;
 
-	long mem_sz = (data_sz + 1) * sizeof(char);
+	CRY_CK(sizeof(char) == 1);
+	
+	long mem_sz = (data_sz + 1);
 	char* file_data = (char*)malloc(mem_sz);
 
 	if(file_data == NULL_PT){ return NULL_PT; }
@@ -369,7 +377,7 @@ cry_encryptor::init_target_encry(){
 	long hd_sz = 0;
 	long tl_sz = 0;
 
-	if(with_sha){
+	if(with_sha){ // INTERNAL SHA
 		hd_sz = sizeof(long);
 		tl_sz = NUM_BYTES_SHA2;
 	}
@@ -398,7 +406,7 @@ cry_encryptor::init_target_encry(){
 		long orig_file_sz = cry_data_sz - hd_sz - tl_sz;
 
 		pt_as(cry_data, long) = orig_file_sz;
-		sha2(pt_dat, orig_file_sz, pt_sha, 0);
+		sha2(pt_dat, orig_file_sz, pt_sha, 0); // INTERNAL SHA
 	}
 
 	target_bytes.init_data((t_1byte*)cry_data, cry_data_sz);
@@ -485,7 +493,7 @@ cry_encryptor::init_target_decry(){
 		}
 
 		unsigned char* cry_sha = sha_arr;
-		sha2(cry_data, cry_data_sz, cry_sha, 0);
+		sha2(cry_data, cry_data_sz, cry_sha, 0); // EXTERNAL SHA
 
 		void* orig_cry_sha = cry_data + cry_data_sz;
 		int cmp_val = memcmp(cry_sha, orig_cry_sha, NUM_BYTES_SHA2);
@@ -531,7 +539,7 @@ cry_encryptor::write_encry_file(const char* out_nm)
 	if(with_sha){
 		memset(sha_arr, 0, NUM_BYTES_SHA2);
 
-		sha2((unsigned char*)cry_data, cry_data_sz, cry_sha, 0);
+		sha2((unsigned char*)cry_data, cry_data_sz, cry_sha, 0); // EXTERNAL SHA
 
 		out_stm.write(cry_vr_msg, cry_vr_msg_sz);
 		wrt_val(out_stm, cry_data_sz);
@@ -540,7 +548,7 @@ cry_encryptor::write_encry_file(const char* out_nm)
 	out_stm.write((const char*)cry_data, cry_data_sz);
 
 	if(with_sha){
-		out_stm.write((const char*)cry_sha, NUM_BYTES_SHA2);
+		out_stm.write((const char*)cry_sha, NUM_BYTES_SHA2); // EXTERNAL SHA
 	}
 	out_stm.close();
 }
@@ -588,7 +596,7 @@ cry_encryptor::write_decry_file(const char* out_nm)
 
 	if(with_sha){
 		unsigned char* cry_sha = sha_arr;
-		sha2((unsigned char*)cry_data, cry_data_sz, cry_sha, 0);
+		sha2((unsigned char*)cry_data, cry_data_sz, cry_sha, 0); // INTERNAL SHA
 
 		void* orig_cry_sha = cry_data + cry_data_sz;
 		int cmp_val = memcmp(cry_sha, orig_cry_sha, NUM_BYTES_SHA2);
@@ -726,17 +734,23 @@ cry_encryptor::get_args(int argc, char** argv)
 void
 cry_encryptor_main(int argc, char** argv){
 	std::ostream& os = std::cout;
+
+	bool l_ok = (sizeof(long) == 8);
+	if(! l_ok){
+		os << "Build failure expecting sizeof(long) == 8)" << std::endl; 
+		os << "But sizeof(long) = " << sizeof(long) << std::endl; 
+		os << "Build again this software" << std::endl; 
+		return;
+	}
+	
 	cry_encryptor cry_engine;
 
 	cry_engine.get_args(argc, argv);
 
 	if(cry_engine.prt_help){
 		os << cry_help << std::endl;
-		os << "sizeof(long) = " << sizeof(long) << std::endl; 
-		//long val = 123456789123;
-		//os << "val_long = " << val << std::endl; 
-		//os << "cry_vr_msg_sz = " << cry_vr_msg_sz << std::endl;
-		//sha2_self_test(1);
+		row<char> txt_hd;
+		cry_engine.init_encry_txt_header(txt_hd);
 		return;
 	}
 	if(cry_engine.just_sha){
@@ -809,3 +823,73 @@ int	main(int argc, char** argv){
 
 
 */
+
+void copy_string_in_arr(ch_string& src, row<char>& dest, row_index dest_beg_ii = 0){ 
+	for(row_index aa = 0; aa < (row_index)src.size(); aa++){
+		dest[dest_beg_ii + aa] = src[aa];
+	}
+}
+
+row<char>&	operator << (row<char>& rr, ch_string& src){
+	for(row_index aa = 0; aa < (row_index)src.size(); aa++){
+		rr.push(src[aa]);
+	}
+	return rr;
+}
+
+row<char>&	operator << (row<char>& rr, const char* str){
+	int aa = 0;
+	while(str[aa] != '\0'){
+		rr.push(str[aa]);
+		aa++;
+	}
+	return rr;
+}
+
+ch_string
+long_to_str(long val){
+	bj_ostr_stream ss_val;
+	ss_val << val;
+	return ss_val.str();
+}
+
+
+void 
+cry_encryptor::init_encry_txt_header(row<char>& txt_hd){
+	/*if(! has_key() || ! has_target()){
+		std::cerr << "cry_encryptor::init_encry_txt_header. Internal error. \n";
+		return;
+	}*/
+	txt_hd.clear();
+	
+	ch_string dat_sz_str = long_to_str(target_bytes.size());
+	
+	txt_hd << cry_vr4_msg;
+	txt_hd << "\n";
+	txt_hd << sha_field;
+	txt_hd << target_sha;
+	txt_hd << "\n";
+	txt_hd << data_size_field;
+	txt_hd << dat_sz_str;
+	txt_hd << "\n";
+
+	long space_sz = WITH_SHA_TOP_HEADER_SZ - end_header.size() - txt_hd.size() - 1;
+	for(long aa = 0; aa < space_sz; aa++){
+		txt_hd.push('.');
+	}
+	txt_hd << "\n";
+	txt_hd << end_header;
+	
+	std::cout << "NEW_SZ =" << txt_hd.size() << std::endl;
+	std::cout << "HD=\n" << txt_hd.get_c_array() << std::endl;
+}
+
+void 
+cry_encryptor::init_decry_txt_header(row<char>& txt_hd){
+	if(txt_hd.size() != WITH_SHA_TOP_HEADER_SZ){
+		std::cerr << "File " << input_file_nm << 
+			" found corrupted BEFORE decry in header" << std::endl;
+		return;
+	}
+}
+
