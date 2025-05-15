@@ -426,7 +426,7 @@ void sha2_hmac( unsigned char *key,  int keylen,
     memset( &ctx, 0, sizeof( sha2_context ) );
 }
 
-static const char _sha2_src[] = "_sha2_src";
+//static const char _sha2_src[] = "_sha2_src";
 
 #if defined(SELF_TEST)
 /*

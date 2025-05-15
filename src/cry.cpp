@@ -40,6 +40,9 @@ std::string cry_help =
 
 std::string cry_info = "cry_use.txt";
 
+std::string end_header =
+"----------------------------------------------------------------\n"
+
 bool
 open_ifile(const char* in_nm, std::ifstream& in_stm){
 	in_stm.open(in_nm, std::ios::binary);
@@ -652,7 +655,8 @@ cry_encryptor_main(int argc, char** argv){
 
 	if(cry_engine.prt_help){
 		os << cry_help << std::endl;
-		os << "sizeof(long) = " << sizeof(long) << std::endl;
+		os << "sizeof(long) = " << sizeof(long) << std::endl; 
+		os << "cry_vr_msg_sz = " << cry_vr_msg_sz << std::endl;
 		return;
 	}
 	if(cry_engine.prt_version){
