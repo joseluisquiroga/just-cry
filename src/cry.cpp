@@ -42,8 +42,8 @@ ch_string cry_help =
 
 ch_string cry_info = "cry_use.txt";
 
-ch_string sha_field = "sha256=\n";
-ch_string data_size_field = "data_size=\n";
+ch_string data_sha_field = "data_sha=";
+ch_string data_size_field = "data_size=";
 ch_string end_header = "<<<END_OF_HEADER>>>\n";
 
 int WITH_SHA_TOP_HEADER_SZ = 500; // num bytes top header
@@ -92,6 +92,20 @@ char*	read_file(std::ifstream& in_stm, long& data_sz,
 
 	in_stm.close();
 	return file_data;
+}
+
+ch_string	read_arr_line(char*& pt_data, long& rest_data_sz){
+	bj_ostr_stream ss_val;
+	while(rest_data_sz > 0){
+		char cc = *pt_data;
+		ss_val << cc;
+		pt_data++;
+		rest_data_sz--;
+		if(cc == '\n'){
+			break;
+		}
+	}
+	return ss_val.str();
 }
 
 long	
@@ -750,7 +764,22 @@ cry_encryptor_main(int argc, char** argv){
 	if(cry_engine.prt_help){
 		os << cry_help << std::endl;
 		row<char> txt_hd;
-		cry_engine.init_encry_txt_header(txt_hd);
+		ch_string the_sha = "ESTE_ES_EL_SHA";
+		long the_sz = 123455;
+		cry_engine.set_info_header_encry(txt_hd, the_sha, the_sz);
+	
+		std::cout << "NEW_SZ =" << txt_hd.size() << std::endl;
+		std::cout << "HD=\n" << txt_hd.get_c_array() << std::endl;
+		
+		s_row<t_1byte> tgt;
+		tgt.init_data((t_1byte*)txt_hd.get_data(), txt_hd.get_data_sz());
+
+		ch_string in_sha = "";
+		long in_sz = 0;
+		cry_engine.get_info_header_decry(tgt, in_sha, in_sz);
+		os << "in_sha=" << in_sha << std::endl; 
+		os << "in_sz=" << in_sz << std::endl; 
+		
 		return;
 	}
 	if(cry_engine.just_sha){
@@ -855,41 +884,44 @@ long_to_str(long val){
 
 
 void 
-cry_encryptor::init_encry_txt_header(row<char>& txt_hd){
-	/*if(! has_key() || ! has_target()){
-		std::cerr << "cry_encryptor::init_encry_txt_header. Internal error. \n";
-		return;
-	}*/
+cry_encryptor::set_info_header_encry(row<char>& txt_hd, ch_string& data_sha, long data_size){
 	txt_hd.clear();
 	
-	ch_string dat_sz_str = long_to_str(target_bytes.size());
+	ch_string dat_sz_str = long_to_str(data_size);
 	
 	txt_hd << cry_vr4_msg;
 	txt_hd << "\n";
-	txt_hd << sha_field;
-	txt_hd << target_sha;
+	txt_hd << data_sha_field;
+	txt_hd << data_sha;
 	txt_hd << "\n";
 	txt_hd << data_size_field;
 	txt_hd << dat_sz_str;
 	txt_hd << "\n";
-
-	long space_sz = WITH_SHA_TOP_HEADER_SZ - end_header.size() - txt_hd.size() - 1;
-	for(long aa = 0; aa < space_sz; aa++){
-		txt_hd.push('.');
-	}
-	txt_hd << "\n";
 	txt_hd << end_header;
-	
-	std::cout << "NEW_SZ =" << txt_hd.size() << std::endl;
-	std::cout << "HD=\n" << txt_hd.get_c_array() << std::endl;
 }
 
 void 
-cry_encryptor::init_decry_txt_header(row<char>& txt_hd){
-	if(txt_hd.size() != WITH_SHA_TOP_HEADER_SZ){
-		std::cerr << "File " << input_file_nm << 
-			" found corrupted BEFORE decry in header" << std::endl;
-		return;
+cry_encryptor::get_info_header_decry(s_row<t_1byte>& tgt, ch_string& data_sha, long& data_size){
+	const char* all_data = tgt.get_data();
+	char* pt_data = (char*)all_data;
+	long rest_data_sz = tgt.get_data_sz();
+
+	while(true){
+		ch_string ln = read_arr_line(pt_data, rest_data_sz);
+		std::cout << "LINE=" << ln << std::endl;
+		if(ln.size() == 0){
+			break;
+		}
+		if(ln.starts_with(data_sha_field)){
+			std::cout << "FOUND data_sha_field" << std::endl;
+		}
+		if(ln.starts_with(data_size_field)){
+			std::cout << "FOUND data_size_field" << std::endl;
+		}
+		if(ln == end_header){
+			std::cout << "FOUND_END_HEADER" << std::endl;
+			break;
+		}
 	}
 }
 

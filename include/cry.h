@@ -280,8 +280,8 @@ public:
 		return (input_stm.good() && input_stm.is_open());
 	}
 	
-	void 	init_encry_txt_header(row<char>& txt_hd);
-	void 	init_decry_txt_header(row<char>& txt_hd);
+	void 	set_info_header_encry(row<char>& txt_hd, ch_string& data_sha, long data_size);
+	void 	get_info_header_decry(s_row<t_1byte>& tgt, ch_string& data_sha, long& data_size);
 	
 	void 	print_sha();
 
