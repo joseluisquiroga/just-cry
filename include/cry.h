@@ -3,7 +3,7 @@
 /*************************************************************
 
 cry.h  
-(C 2009) QUIROGA BELTRAN, Jose Luis. Bogotá - Colombia.
+(C 2025) QUIROGA BELTRAN, Jose Luis. Bogotá - Colombia.
 
 Base classes and abstract data types to code the system.
 
@@ -73,6 +73,7 @@ public:
 	bool				with_sha;
 	bool				encry;
 	bool				as_hex;
+	bool				just_sha;
 
 	std::string			input_file_nm;
 	secure_row<t_1byte>		key;
@@ -86,6 +87,7 @@ public:
 		with_sha = true;
 		encry = true;
 		as_hex = false;
+		just_sha = false;
 		
 		bits_part = false;
 
@@ -270,6 +272,8 @@ public:
 	bool	has_input(){
 		return (input_stm.good() && input_stm.is_open());
 	}
+	
+	void 	print_sha();
 
 	void	process_file(){
 		CRY_CK(sizeof(t_1byte) == sizeof(unsigned char));

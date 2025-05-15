@@ -1,5 +1,6 @@
 
 
+
 /*
  *  FIPS-180-2 compliant SHA-256 implementation
  *
@@ -484,6 +485,8 @@ int sha2_self_test( int verbose )
     unsigned char sha2sum[32];
     sha2_context ctx;
 
+	printf("sha2_self_test\n");
+	
     memset( buf, 'a', 1000 );
 
     for( i = 0; i < 6; i++ )

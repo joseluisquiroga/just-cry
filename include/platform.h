@@ -3,7 +3,7 @@
 /*************************************************************
 
 platform.h
-(C 2007) QUIROGA BELTRAN, Jose Luis. Bogotá - Colombia.
+(C 2025) QUIROGA BELTRAN, Jose Luis. Bogotá - Colombia.
 
 Some macros that allow to indent better platform 
 dependant code.

@@ -3,11 +3,11 @@
 /*************************************************************
 
 tools.h  
-(C 2007) QUIROGA BELTRAN, Jose Luis. Bogotá - Colombia.
+(C 2025) QUIROGA BELTRAN, Jose Luis. Bogotá - Colombia.
 
 Base classes and abstract data types to code the system.
 
-last update: 29 Ago 2007.
+last update: 15 May 2025.
 
 --------------------------------------------------------------*/
 
@@ -51,10 +51,14 @@ enum tool_exception_code {
 typedef long			integer;
 typedef integer			row_index;
 typedef char			comparison;
+typedef unsigned char	uchar_t;
 
 #define CMP_FN_T(nm_fun) comparison (*nm_fun)(obj_t const & obj1, obj_t const & obj2)
 
 #define	as_bool(prm)	((prm) != 0)
+
+#define lo_hex_as_int(the_byte)	(((the_byte) >> 4) & 0xF)
+#define hi_hex_as_int(the_byte)	((the_byte) & 0x0F)
 
 enum	cmp_is_sub {
 	k_lft_is_sub = -1,
@@ -735,6 +739,8 @@ public:
 //======================================================================
 // row
 
+std::string    sha_txt_of_arr(uchar_t* to_sha, long to_sha_sz);
+
 #define DATA_ATTRIB_T(the_type)	row<the_type>::data
 
 #define DATA_ATTRIB	row<obj_t>::data
@@ -755,6 +761,30 @@ public:
 		return (SZ_ATTRIB * sizeof(obj_t));
 	}
 	
+	void		as_hex_txt(row<char>& hex_str){
+		char hexval[16] = {'0', '1', '2', '3', '4', '5', '6', '7', 
+							'8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+		const t_1byte* by_arr = get_data();
+		long sz_arr = get_data_sz();
+		long hex_sz = sz_arr * 2;
+
+		hex_str.clear();
+		hex_str.fill('0', hex_sz);
+
+		for(long aa = 0; aa < sz_arr; aa++){
+			hex_str[aa * 2] = hexval[lo_hex_as_int(by_arr[aa])];
+			hex_str[(aa * 2) + 1] = hexval[hi_hex_as_int(by_arr[aa])];
+		}
+	}
+	
+	std::string	as_hex_str(){
+		row<char> hex_txt;
+		as_hex_txt(hex_txt);
+		hex_txt.push(0);
+		std::string out_str = hex_txt.get_c_array();
+		return out_str;
+	}
+
 	const obj_t*	get_c_array(){
 		return data;
 	}

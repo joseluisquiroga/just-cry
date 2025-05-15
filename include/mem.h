@@ -3,7 +3,7 @@
 /*************************************************************
 
 mem.h  
-(C 2007) QUIROGA BELTRAN, Jose Luis. Bogotá - Colombia.
+(C 2025) QUIROGA BELTRAN, Jose Luis. Bogotá - Colombia.
 
 Mem managment.
 

@@ -3,11 +3,11 @@
 /*************************************************************
 
 bit_row.h  
-(C 2007) QUIROGA BELTRAN, Jose Luis. Bogotá - Colombia.
+(C 2025) QUIROGA BELTRAN, Jose Luis. Bogotá - Colombia.
 
 binary rows of bits.
 
-last update: 29 Ago 2007.
+last update: 15 May 2025.
 
 --------------------------------------------------------------*/
 

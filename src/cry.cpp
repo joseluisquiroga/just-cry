@@ -3,7 +3,7 @@
 /*************************************************************
 
 cry.cpp
-(C 2009) QUIROGA BELTRAN, Jose Luis. Bogotá - Colombia.
+(C 2025) QUIROGA BELTRAN, Jose Luis. Bogotá - Colombia.
 
 cry encryptor functions. no-trace style encryptor.
 
@@ -17,14 +17,14 @@ DEFINE_MEM_STATS;
 char* cry_vr_msg = NULL_PT;
 long cry_vr_msg_sz = 0; 
 
-std::string cry_vr2_msg =
-"cry-encryptor v2.5\n"
+std::string cry_vr4_msg =
+"cry v4\n"
 "https://github.com/joseluisquiroga/just-cry\n"
 "(c) 2025. QUIROGA BELTRAN, Jose Luis. Bogota - Colombia.\n"
 ;
 
 std::string cry_help =
-"cry <file_name> [-e|-d|-h|-v] [-x][-r]\n"
+"cry4 <file_name> [-e|-d|-h|-v] [-x][-r]\n"
 "\n"
 "-e : encrypt the given <file_name>. (default option).\n"
 "-d : decrypt the given <file_name>.\n"
@@ -604,6 +604,56 @@ cry_encryptor::write_decry_file(const char* out_nm)
 	out_stm.close();
 }
 
+void
+sha_bytes_of_arr(uchar_t* to_sha, long to_sha_sz, row<uchar_t>& the_sha){
+	the_sha.clear();
+	the_sha.fill(0, NUM_BYTES_SHA2);
+	uchar_t* sha_arr = (uchar_t*)(the_sha.get_c_array());
+
+	uchar_t* ck_arr1 = to_sha;
+	MARK_USED(ck_arr1);
+
+	sha2(to_sha, to_sha_sz, sha_arr, 0);
+	TOOLS_CK(ck_arr1 == to_sha);
+	TOOLS_CK((uchar_t*)(the_sha.get_c_array()) == sha_arr);
+}
+
+std::string 
+sha_txt_of_arr(uchar_t* to_sha, long to_sha_sz){
+	row<uchar_t>	the_sha;
+	sha_bytes_of_arr(to_sha, to_sha_sz, the_sha);
+	std::string sha_txt = the_sha.as_hex_str();
+	return sha_txt;
+}
+
+void
+cry_encryptor::print_sha(){
+	init_input();
+	
+	std::ostream& os = std::cout;
+
+	unsigned char sha_arr[NUM_BYTES_SHA2];
+	memset(sha_arr, 0, NUM_BYTES_SHA2);
+
+	CRY_CK(pt_file_data == NULL_PT);
+	CRY_CK(file_data_sz == 0);
+
+	std::ifstream& in_stm = input_stm;
+
+	pt_file_data = read_file(in_stm, file_data_sz); 
+
+	if(pt_file_data == NULL_PT){
+		os << "Could not read file " << input_file_nm << std::endl;
+		return;
+	}
+
+	//unsigned char* cry_sha = sha_arr;
+	//sha2((unsigned char*)pt_file_data, file_data_sz, cry_sha, 0);
+
+	std::string sha_str1 = sha_txt_of_arr((unsigned char*)pt_file_data, file_data_sz);
+	os << "SHA_256=" << sha_str1 << std::endl;
+}
+
 void	
 cry_encryptor::get_args(int argc, char** argv)
 {
@@ -613,8 +663,8 @@ cry_encryptor::get_args(int argc, char** argv)
 	CRY_CK(cry_vr_msg == NULL_PT);
 	CRY_CK(cry_vr_msg_sz == 0);
 
-	cry_vr_msg = (char*)(cry_vr2_msg.c_str());
-	cry_vr_msg_sz = cry_vr2_msg.size();
+	cry_vr_msg = (char*)(cry_vr4_msg.c_str());
+	cry_vr_msg_sz = cry_vr4_msg.size();
 
 	for(long ii = 1; ii < argc; ii++){
 		std::string the_arg = argv[ii];
@@ -626,6 +676,8 @@ cry_encryptor::get_args(int argc, char** argv)
 			with_sha = false;
 		} else if(strcmp(argv[ii], "-x") == 0){
 			as_hex = true;
+		} else if(strcmp(argv[ii], "-s") == 0){
+			just_sha = true;
 		} else if(strcmp(argv[ii], "-d") == 0){
 			encry = false;
 		} else if((strcmp(argv[ii], "-k") == 0) && ((ii + 1) < argc)){
@@ -655,7 +707,12 @@ cry_encryptor_main(int argc, char** argv){
 	if(cry_engine.prt_help){
 		os << cry_help << std::endl;
 		os << "sizeof(long) = " << sizeof(long) << std::endl; 
-		os << "cry_vr_msg_sz = " << cry_vr_msg_sz << std::endl;
+		//os << "cry_vr_msg_sz = " << cry_vr_msg_sz << std::endl;
+		//sha2_self_test(1);
+		return;
+	}
+	if(cry_engine.just_sha){
+		cry_engine.print_sha();
 		return;
 	}
 	if(cry_engine.prt_version){
