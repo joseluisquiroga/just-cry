@@ -180,6 +180,92 @@ get_idx_of_pt(obj_t* data, obj_t* pt_obj, row_index the_size){
 }
 
 //======================================================================
+// byte funcs:
+
+static inline 
+t_1byte get_byte_val(t_1byte b_exa, bool upper){
+	t_1byte val = 0;
+	switch (b_exa) {
+	case '0':
+		val = 0;
+		break;
+	case '1':
+		val = 1;
+		break;
+	case '2':
+		val = 2;
+		break;
+	case '3':
+		val = 3;
+		break;
+	case '4':
+		val = 4;
+		break;
+	case '5':
+		val = 5;
+		break;
+	case '6':
+		val = 6;
+		break;
+	case '7':
+		val = 7;
+		break;
+	case '8':
+		val = 8;
+		break;
+	case '9':
+		val = 9;
+		break;
+	case 'A':
+		val = 10;
+		break;
+	case 'a':
+		val = 10;
+		break;
+	case 'B':
+		val = 11;
+		break;
+	case 'b':
+		val = 11;
+		break;
+	case 'C':
+		val = 12;
+		break;
+	case 'c':
+		val = 12;
+		break;
+	case 'D':
+		val = 13;
+		break;
+	case 'd':
+		val = 13;
+		break;
+	case 'E':
+		val = 14;
+		break;
+	case 'e':
+		val = 14;
+		break;
+	case 'F':
+		val = 15;
+		break;
+	case 'f':
+		val = 15;
+		break;
+	}
+	if (upper) {
+		val = (t_1byte) (val << (t_1byte) 4);
+	}
+	return val;
+}
+
+static inline 
+t_1byte calc_val_byte(t_1byte upper, t_1byte lower) {
+	t_1byte bb = (t_1byte) (get_byte_val(upper, true) | get_byte_val(lower, false));
+	return bb;
+}
+
+//======================================================================
 // Time:
 
 
@@ -763,7 +849,7 @@ public:
 		return (SZ_ATTRIB * sizeof(obj_t));
 	}
 	
-	void		as_hex_txt(row<char>& hex_str){
+	void		bytes_to_hex_bytes(row<char>& hex_str){
 		char hexval[16] = {'0', '1', '2', '3', '4', '5', '6', '7', 
 							'8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 		const t_1byte* by_arr = get_data();
@@ -781,7 +867,7 @@ public:
 	
 	std::string	as_hex_str(){
 		row<char> hex_txt;
-		as_hex_txt(hex_txt);
+		bytes_to_hex_bytes(hex_txt);
 		hex_txt.push(0);
 		std::string out_str = hex_txt.get_c_array();
 		return out_str;

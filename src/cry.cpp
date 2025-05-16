@@ -906,6 +906,7 @@ int	main(int argc, char** argv){
 	return 0;
 }
 
+
 // test_cry.txt -e
 // test_cry.txt.encry -d
 
@@ -1065,3 +1066,6 @@ test_header(cry_encryptor& cry_engine){
 	os << "in_sha=" << in_sha << std::endl; 
 	os << "in_sz=" << in_sz << std::endl; 
 }
+
+
+//	void		row::as_hex_txt(row<char>& hex_str){
