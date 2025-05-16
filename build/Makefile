@@ -11,8 +11,8 @@ OBJ_DIR = $(BASE_DIR)/bin/obj
 INCLUDE_DIR = $(BASE_DIR)/include
 
 INCLUDE_FLAGS = -I$(INCLUDE_DIR)
-#DBG_FLAGS = -DFULL_DEBUG -rdynamic  
-DBG_FLAGS = -rdynamic  
+DBG_FLAGS = -DFULL_DEBUG -rdynamic  
+#DBG_FLAGS = -rdynamic  
 
 # CMPL_FLAGS = $(INCLUDE_FLAGS) 
 CMPL_FLAGS = $(DBG_FLAGS) $(INCLUDE_FLAGS) -Wall -std=c++20 

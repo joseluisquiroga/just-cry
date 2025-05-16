@@ -32,6 +32,8 @@ Base classes and abstract data types to code the system.
 #define CARRIAGE_RETURN		((char)13)
 #endif
 
+#define NUM_BITS_IN_BYTE 8
+
 #define MIN_KEY_INIT_CHANGES 1000
 #define MAX_KEY_INIT_CHANGES 2000
 
@@ -57,13 +59,15 @@ private:
 	bool				bits_part;
 
 	tak_mak				for_key;
-	tak_mak				for_bytes;
-	tak_mak				for_bits;
+	tak_mak				for_bytes_dest;
+	tak_mak				for_bits_dest;
+	tak_mak				for_bits_src;
 
 	s_bit_row			key_bits;
 	s_row<unsigned long>		key_longs;
 
-	secure_row<long>	opers;
+	secure_row<long>	sw_src;
+	secure_row<long>	sw_dest;
 
 	t_1byte*			pt_file_data;
 	long				file_data_sz;
@@ -130,15 +134,15 @@ public:
 	tak_mak&	get_tm(){
 		tak_mak* tm = NULL_PT;
 		if(bits_part){
-			tm = &for_bits;
+			tm = &for_bits_dest;
 		} else {
-			tm = &for_bytes;
+			tm = &for_bytes_dest;
 		}
 		CRY_CK(tm != NULL_PT);
 		return *tm;
 	}
 
-	long	get_max_op(){
+	long	get_limit_idx(){
 		if(bits_part){
 			return target_bits.size();
 		} else {
@@ -146,7 +150,7 @@ public:
 		}
 	}
 
-	long	gen_oper(tak_mak& tm_gen, long max_op);
+	long	gen_oper(tak_mak& tm_gen, long limit_idx);
 
 	long	chr_row_to_long(row<char>& rr);
 
@@ -161,37 +165,70 @@ public:
 	void	get_key(secure_row<t_1byte>& the_key);
 	void	init_key();
 
+	void 	init_tak_mak_with_key(tak_mak& tm){
+		if(key_longs.size() == 1){
+			tm.init_with_long(key_longs[0]);
+		} else {
+			tm.init_with_array(key_longs.get_c_array(), key_longs.get_c_array_sz());
+		}
+	}
+	
+	void 	shake_key(tak_mak& tm);
 	void	init_tak_maks();
 	void	init_target_encry();
 	void	init_target_decry();
+	
+	void	init_sw_src(){
+		tak_mak& tm_gen = for_bits_src;
+		CRY_CK((bit_row_index)(target_bytes.size() * NUM_BITS_IN_BYTE) == target_bits.size());
 
-	void	init_opers(){
-		tak_mak& tm_gen = get_tm();
-		long max_op = get_max_op();
-
-		opers.set_size(target_bytes.size());
+		sw_src.set_size(target_bytes.size());
 		for(long aa = 0; aa < target_bytes.size(); aa++){
-			opers[aa] = gen_oper(tm_gen, max_op);
+			long src_idx = (aa * NUM_BITS_IN_BYTE) + gen_oper(tm_gen, NUM_BITS_IN_BYTE);
+			CRY_CK(src_idx >= 0);
+			CRY_CK(src_idx < target_bits.size());
+			sw_src[aa] = src_idx;
+			//std::cout << "    " << pct_bit_idx(src_idx);
 		}
+		CRY_CK(target_bytes.size() == sw_src.size());
+	}
+	
+	void	init_sw_dest(){
+		tak_mak& tm_gen = get_tm();
+		long limit_idx = get_limit_idx();
+
+		sw_dest.set_size(target_bytes.size());
+		for(long aa = 0; aa < target_bytes.size(); aa++){
+			sw_dest[aa] = gen_oper(tm_gen, limit_idx);
+		}
+		CRY_CK(target_bytes.size() == sw_dest.size());
 	}
 
-	void	byte_oper(long oper){
-		long v_op = opers[oper];
-		target_bytes.swap(v_op, oper);
+	void	byte_swap(long num_oper){
+		long by_src = num_oper;
+		long by_dest = sw_dest[num_oper];
+		target_bytes.swap(by_dest, by_src);
 	}
 
-	void	bit_oper(long oper){
-		long v_op = opers[oper];
-		target_bits.swap(v_op, oper);		// FIX. ONLY SWAPS BITS in the first target_bytes.size() BITS !!!
+	double 	pct_bit_idx(long idx){
+		return (((double)idx * 100.0)/ (double)target_bits.size());
+	}
+
+	void	bit_swap(long num_oper){
+		//long bt_src = num_oper; // FIX. ONLY SWAPS BITS in the first target_bytes.size() BITS !!!
+		long bt_src = sw_src[num_oper];
+		long bt_dest = sw_dest[num_oper];
+		//std::cout << "    " << pct_bit_idx(bt_src) << "-" << pct_bit_idx(bt_dest);
+		target_bits.swap(bt_dest, bt_src);
 	}
 
 	void	encry_bytes(){
 		CRY_CK(encry);
 		CRY_CK(! target_bytes.is_empty());
 		bits_part = false;
-		init_opers();
-		for(long aa = 0; aa < opers.size(); aa++){
-			byte_oper(aa);
+		init_sw_dest();
+		for(long aa = 0; aa < target_bytes.size(); aa++){
+			byte_swap(aa);
 		}
 	}
 
@@ -199,27 +236,29 @@ public:
 		CRY_CK(encry);
 		CRY_CK(! target_bits.is_empty());
 		bits_part = true;
-		init_opers();
-		for(long aa = 0; aa < opers.size(); aa++){
-			bit_oper(aa);
+		init_sw_src();
+		init_sw_dest();
+		for(long aa = 0; aa < target_bytes.size(); aa++){
+			bit_swap(aa);
 		}
 	}
 
 	void	decry_bytes(){
 		CRY_CK(! encry);
 		bits_part = false;
-		init_opers();
-		for(long aa = (opers.size() - 1); aa >= 0; aa--){
-			byte_oper(aa);
+		init_sw_dest();
+		for(long aa = (target_bytes.size() - 1); aa >= 0; aa--){
+			byte_swap(aa);
 		}
 	}
 
 	void	decry_bits(){
 		CRY_CK(! encry);
 		bits_part = true;
-		init_opers();
-		for(long aa = (opers.size() - 1); aa >= 0; aa--){
-			bit_oper(aa);
+		init_sw_src();
+		init_sw_dest();
+		for(long aa = (target_bytes.size() - 1); aa >= 0; aa--){
+			bit_swap(aa);
 		}
 	}
 

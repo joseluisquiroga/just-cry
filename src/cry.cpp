@@ -335,6 +335,17 @@ cry_encryptor::init_key(){
 }
 
 void
+cry_encryptor::shake_key(tak_mak& tm){
+	long nn = tm.gen_rand_int32_ie(MIN_KEY_INIT_CHANGES, MAX_KEY_INIT_CHANGES);
+
+	for(long aa = 0; aa < nn; aa++){
+		long idx1 = tm.gen_rand_int32_ie(0, key_bits.size());
+		long idx2 = tm.gen_rand_int32_ie(0, key_bits.size());
+		key_bits.swap(idx1, idx2);
+	}
+}
+
+void
 cry_encryptor::init_tak_maks(){
 	std::ostream& os = std::cout;
 	MARK_USED(os);
@@ -346,35 +357,14 @@ cry_encryptor::init_tak_maks(){
 		os << "WARNING. Using MINIMUM key size !!!" << std::endl;
 	}
 	
-	if(key_longs.size() == 1){
-		for_bytes.init_with_long(key_longs[0]);
-	} else {
-		for_bytes.init_with_array(
-				key_longs.get_c_array(), 
-				key_longs.get_c_array_sz()
-		);
-	}
+	init_tak_mak_with_key(for_bytes_dest);	
+	shake_key(for_bytes_dest);
 
-	long nn = for_bytes.gen_rand_int32_ie(
-			MIN_KEY_INIT_CHANGES, MAX_KEY_INIT_CHANGES);
+	init_tak_mak_with_key(for_bits_dest);
+	shake_key(for_bits_dest);
 
-	for(long aa = 0; aa < nn; aa++){
-		long idx1 = for_bytes.gen_rand_int32_ie(
-						0, key_bits.size());
-		long idx2 = for_bytes.gen_rand_int32_ie(
-						0, key_bits.size());
-
-		key_bits.swap(idx1, idx2);
-	}
-
-	if(key_longs.size() == 1){
-		for_bits.init_with_long(key_longs[0]);
-	} else {
-		for_bits.init_with_array(
-				key_longs.get_c_array(), 
-				key_longs.get_c_array_sz()
-		);
-	}
+	init_tak_mak_with_key(for_bits_src);
+	shake_key(for_bits_src);
 }
 
 void
