@@ -48,6 +48,8 @@ ch_string end_header = "<<<END_OF_HEADER>>>\n";
 
 int WITH_SHA_TOP_HEADER_SZ = 500; // num bytes top header
 
+void test_header(cry_encryptor& cry_engine);
+
 bool
 open_ifile(const char* in_nm, std::ifstream& in_stm){
 	in_stm.open(in_nm, std::ios::binary);
@@ -480,6 +482,131 @@ cry_encryptor::init_target_decry(){
 		}
 	}
 
+	long cry_data_sz = file_data_sz;
+	unsigned char* cry_data = (unsigned char*)(pt_file_data);
+	
+	if(with_sha){
+		
+		s_row<t_1byte> tmp_hd;
+		tmp_hd.init_data((t_1byte*)pt_file_data, file_data_sz);
+		
+		ch_string in_sha = "";
+		long in_data_sz = 0;
+		char* in_data = NULL_PT;
+		get_info_header_decry(tmp_hd, in_sha, in_data, in_data_sz);
+		
+		if(in_data == NULL_PT){
+			os << "Corrupt cry encrypted file " << input_file_nm << std::endl;
+			end_target();
+			return;
+		}
+		
+		ch_string calc_sha = sha_txt_of_arr((uchar_t*)in_data, in_data_sz);
+		if(calc_sha != in_sha){
+			os << "Verification BEFORE decry failed with " 
+				<< "cry encrypted file" << input_file_nm 
+				<< std::endl;
+			os << "File is corrupted." << std::endl;
+			end_target();
+			return;
+		}
+
+		cry_data_sz = in_data_sz;
+		cry_data = (unsigned char*)(in_data);
+	}
+
+	target_bytes.init_data((t_1byte*)cry_data, cry_data_sz);
+	target_bits.init_data((t_1byte*)cry_data, cry_data_sz);
+}
+
+void	
+cry_encryptor::write_encry_file(const char* out_nm)
+{
+	std::ostream& os = std::cout;
+
+	if(target_bytes.is_empty()){
+		return;
+	}
+
+	std::ofstream out_stm;
+	out_stm.open(out_nm, std::ios::binary);
+	if(! out_stm.good() || ! out_stm.is_open()){
+		os << "Archivo de salida " << out_nm << 
+			" invalido." << std::endl;
+		return;
+	}
+	t_dword pos = out_stm.tellp();
+	MARK_USED(pos);
+	CRY_CK(pos == 0);
+
+	unsigned char* cry_data = (unsigned char*)target_bytes.get_data();
+	long cry_data_sz = target_bytes.get_data_sz();
+	
+	if(with_sha){
+		target_sha = sha_txt_of_arr((uchar_t*)target_bytes.get_data(), target_bytes.size());
+		row<char> txt_hd;
+		set_info_header_encry(txt_hd, target_sha, cry_data_sz);
+		out_stm.write((const char*)txt_hd.get_data(), txt_hd.get_data_sz());
+	}
+
+	out_stm.write((const char*)cry_data, cry_data_sz);
+	out_stm.close();
+}
+
+/*
+void
+cry_encryptor::init_target_decry(){
+	if(! has_input()){
+		return;
+	}
+
+	std::ostream& os = std::cout;
+
+	unsigned char sha_arr[NUM_BYTES_SHA2];
+	memset(sha_arr, 0, NUM_BYTES_SHA2);
+
+	CRY_CK(pt_file_data == NULL_PT);
+	CRY_CK(file_data_sz == 0);
+
+	std::ifstream& in_stm = input_stm;
+
+	pt_file_data = read_file(in_stm, file_data_sz); 
+
+	if(pt_file_data == NULL_PT){
+		os << "Could not read file " << input_file_nm << std::endl;
+		return;
+	}
+
+	CRY_CK(cry_vr_msg != NULL_PT);
+	CRY_CK(cry_vr_msg_sz != 0);
+
+	if(file_data_sz > cry_vr_msg_sz){
+		int cmp_hd = memcmp(pt_file_data, cry_vr_msg, cry_vr_msg_sz);
+		if(with_sha && (cmp_hd != 0)){
+			os << "File " << input_file_nm << " does not seem to be a " << std::endl;
+			os << "-----------------------" << std::endl;
+			os << cry_vr_msg << std::endl;
+			os << "-----------------------" << std::endl;
+			os << "file." << std::endl;
+			os << std::endl;
+			os << "If it is a raw encrypted file " 
+				<< "(using the -r option), "
+				<< " the -r option must be selected for " 
+				<< "decryption too." << std::endl;
+			os << std::endl;
+			os << cry_help;
+			end_target();
+			return;
+		}
+		if(! with_sha && (cmp_hd == 0)){
+			os << "File " << input_file_nm << " seems to be encrypted ";
+			os << "without the -r (row) option." << std::endl;
+			os << std::endl;
+			os << "If you get a messy file try without it." 
+				<< std::endl;
+		}
+	}
+
 	long encry_hd_sz = 0; 
 		
 	if(with_sha){
@@ -566,6 +693,7 @@ cry_encryptor::write_encry_file(const char* out_nm)
 	}
 	out_stm.close();
 }
+*/
 
 void	
 cry_encryptor::write_decry_file(const char* out_nm)
@@ -763,23 +891,7 @@ cry_encryptor_main(int argc, char** argv){
 
 	if(cry_engine.prt_help){
 		os << cry_help << std::endl;
-		row<char> txt_hd;
-		ch_string the_sha = "ESTE_ES_EL_SHA";
-		long the_sz = 123455;
-		cry_engine.set_info_header_encry(txt_hd, the_sha, the_sz);
-	
-		std::cout << "NEW_SZ =" << txt_hd.size() << std::endl;
-		std::cout << "HD=\n" << txt_hd.get_c_array() << std::endl;
-		
-		s_row<t_1byte> tgt;
-		tgt.init_data((t_1byte*)txt_hd.get_data(), txt_hd.get_data_sz());
-
-		ch_string in_sha = "";
-		long in_sz = 0;
-		cry_engine.get_info_header_decry(tgt, in_sha, in_sz);
-		os << "in_sha=" << in_sha << std::endl; 
-		os << "in_sz=" << in_sz << std::endl; 
-		
+		//test_header(cry_engine);
 		return;
 	}
 	if(cry_engine.just_sha){
@@ -901,27 +1013,65 @@ cry_encryptor::set_info_header_encry(row<char>& txt_hd, ch_string& data_sha, lon
 }
 
 void 
-cry_encryptor::get_info_header_decry(s_row<t_1byte>& tgt, ch_string& data_sha, long& data_size){
+cry_encryptor::get_info_header_decry(s_row<t_1byte>& tgt, ch_string& data_sha, char*& pt_data, long& data_sz){
 	const char* all_data = tgt.get_data();
-	char* pt_data = (char*)all_data;
+	char* pt_rest_data = (char*)all_data;
 	long rest_data_sz = tgt.get_data_sz();
+	long rd_data_sz = 0;
 
+	pt_data = NULL_PT;
+	data_sz = 0;
+	
 	while(true){
-		ch_string ln = read_arr_line(pt_data, rest_data_sz);
-		std::cout << "LINE=" << ln << std::endl;
+		ch_string ln = read_arr_line(pt_rest_data, rest_data_sz);
+		//std::cout << "LINE=" << ln << std::endl;
 		if(ln.size() == 0){
 			break;
 		}
 		if(ln.starts_with(data_sha_field)){
-			std::cout << "FOUND data_sha_field" << std::endl;
+			data_sha = ln.substr(data_sha_field.size());
+			data_sha.pop_back();
+			//std::cout << "FOUND data_sha_field=" << data_sha << std::endl;
 		}
 		if(ln.starts_with(data_size_field)){
-			std::cout << "FOUND data_size_field" << std::endl;
+			ch_string val2 = ln.substr(data_size_field.size());
+			val2.pop_back();
+			rd_data_sz = parse_long_str(val2);
+			//std::cout << "FOUND data_size_field=" << val2 << std::endl;
 		}
 		if(ln == end_header){
-			std::cout << "FOUND_END_HEADER" << std::endl;
+			//std::cout << "FOUND_END_HEADER" << std::endl;
 			break;
 		}
 	}
+	if(rd_data_sz != rest_data_sz){
+		std::cerr << "Corrupted file. Header field " << data_size_field << " does not match actual size" << std::endl;
+		pt_data = NULL_PT;
+		data_sz = 0;
+		return;
+	}
+	data_sz = rd_data_sz;
+	pt_data = pt_rest_data;
 }
 
+void 
+test_header(cry_encryptor& cry_engine){
+	std::ostream& os = std::cout;
+	row<char> txt_hd;
+	ch_string the_sha = "ESTE_ES_EL_SHA";
+	long the_sz = 123455876;
+	cry_engine.set_info_header_encry(txt_hd, the_sha, the_sz);
+
+	std::cout << "NEW_SZ =" << txt_hd.size() << std::endl;
+	std::cout << "HD=\n" << txt_hd.get_c_array() << std::endl;
+	
+	s_row<t_1byte> tgt;
+	tgt.init_data((t_1byte*)txt_hd.get_data(), txt_hd.get_data_sz());
+
+	ch_string in_sha = "";
+	char* in_data = NULL_PT;
+	long in_sz = 0;
+	cry_engine.get_info_header_decry(tgt, in_sha, in_data, in_sz);
+	os << "in_sha=" << in_sha << std::endl; 
+	os << "in_sz=" << in_sz << std::endl; 
+}

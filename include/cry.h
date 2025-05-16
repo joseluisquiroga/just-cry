@@ -230,9 +230,7 @@ public:
 		if(encry){
 			encry_bytes();
 			encry_bits();
-			target_sha = sha_txt_of_arr((uchar_t*)target_bytes.get_data(), target_bytes.size());
 		} else {
-			target_sha = sha_txt_of_arr((uchar_t*)target_bytes.get_data(), target_bytes.size());
 			decry_bits();
 			decry_bytes();
 		}
@@ -281,7 +279,7 @@ public:
 	}
 	
 	void 	set_info_header_encry(row<char>& txt_hd, ch_string& data_sha, long data_size);
-	void 	get_info_header_decry(s_row<t_1byte>& tgt, ch_string& data_sha, long& data_size);
+	void 	get_info_header_decry(s_row<t_1byte>& tgt, ch_string& data_sha, char*& pt_data, long& data_sz);
 	
 	void 	print_sha();
 
