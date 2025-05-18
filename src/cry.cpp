@@ -335,7 +335,7 @@ cry_encryptor::init_key(){
 }
 
 void
-cry_encryptor::shake_key(tak_mak& tm){
+cry_encryptor::shake_key_with(tak_mak& tm){
 	long nn = tm.gen_rand_int32_ie(MIN_KEY_INIT_CHANGES, MAX_KEY_INIT_CHANGES);
 
 	for(long aa = 0; aa < nn; aa++){
@@ -357,14 +357,17 @@ cry_encryptor::init_tak_maks(){
 		os << "WARNING. Using MINIMUM key size !!!" << std::endl;
 	}
 	
-	init_tak_mak_with_key(for_bytes_dest);	
-	shake_key(for_bytes_dest);
+	init_tak_mak_with_key(for_bytes_dest);
+	shake_key_with(for_bytes_dest);
 
 	init_tak_mak_with_key(for_bits_dest);
-	shake_key(for_bits_dest);
+	shake_key_with(for_bits_dest);
 
 	init_tak_mak_with_key(for_bits_src);
-	shake_key(for_bits_src);
+	shake_key_with(for_bits_src);
+
+	init_tak_mak_with_key(for_byte_flx);
+	shake_key_with(for_byte_flx);
 }
 
 void

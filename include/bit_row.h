@@ -552,7 +552,7 @@ public:
 		init_data((t_1byte*)dat, sizeof(long));
 	}
 
-	s_bit_row(char* dat){
+	s_bit_row(char* dat, bool aux){  // the bool is to avoid ambiguity with array initializer
 		init_data((t_1byte*)dat, sizeof(char));
 	}
 

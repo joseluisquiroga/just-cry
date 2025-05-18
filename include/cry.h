@@ -37,6 +37,8 @@ Base classes and abstract data types to code the system.
 #define MIN_KEY_INIT_CHANGES 1000
 #define MAX_KEY_INIT_CHANGES 2000
 
+#define MAX_REFLEX_OPER 4
+
 #define NUM_BYTES_SHA2	32	// 256 bits
 
 #define fst_long(pt_dat) (*((long*)pt_dat))
@@ -62,11 +64,12 @@ private:
 	tak_mak				for_bytes_dest;
 	tak_mak				for_bits_dest;
 	tak_mak				for_bits_src;
+	tak_mak				for_byte_flx;
 
 	s_bit_row			key_bits;
 	s_row<unsigned long>		key_longs;
 
-	secure_row<long>	sw_src;
+	secure_row<char>	sw_aux;
 	secure_row<long>	sw_dest;
 
 	t_1byte*			pt_file_data;
@@ -173,24 +176,37 @@ public:
 		}
 	}
 	
-	void 	shake_key(tak_mak& tm);
+	void 	shake_key_with(tak_mak& tm);
 	void	init_tak_maks();
 	void	init_target_encry();
 	void	init_target_decry();
 	
-	void	init_sw_src(){
+	void	init_rf_aux(){
+		tak_mak& tm_gen = for_byte_flx;
+
+		sw_aux.set_size(target_bytes.size());
+		for(long aa = 0; aa < target_bytes.size(); aa++){
+			sw_aux[aa] = gen_oper(tm_gen, MAX_REFLEX_OPER);
+		}
+		CRY_CK(target_bytes.size() == sw_aux.size());
+	}
+
+	void	init_sw_aux(){
 		tak_mak& tm_gen = for_bits_src;
 		CRY_CK((bit_row_index)(target_bytes.size() * NUM_BITS_IN_BYTE) == target_bits.size());
 
-		sw_src.set_size(target_bytes.size());
+		sw_aux.set_size(target_bytes.size());
 		for(long aa = 0; aa < target_bytes.size(); aa++){
-			long src_idx = (aa * NUM_BITS_IN_BYTE) + gen_oper(tm_gen, NUM_BITS_IN_BYTE);
+			char src_idx = gen_oper(tm_gen, NUM_BITS_IN_BYTE);
 			CRY_CK(src_idx >= 0);
-			CRY_CK(src_idx < target_bits.size());
-			sw_src[aa] = src_idx;
+			CRY_CK(src_idx < NUM_BITS_IN_BYTE);
+			long bt_src = (aa * NUM_BITS_IN_BYTE) + sw_aux[aa];
+			CRY_CK(bt_src >= 0);
+			CRY_CK(bt_src < target_bits.size());
+			sw_aux[aa] = src_idx;
 			//std::cout << "    " << pct_bit_idx(src_idx);
 		}
-		CRY_CK(target_bytes.size() == sw_src.size());
+		CRY_CK(target_bytes.size() == sw_aux.size());
 	}
 	
 	void	init_sw_dest(){
@@ -216,10 +232,58 @@ public:
 
 	void	bit_swap(long num_oper){
 		//long bt_src = num_oper; // FIX. ONLY SWAPS BITS in the first target_bytes.size() BITS !!!
-		long bt_src = sw_src[num_oper];
+		long bt_src = (num_oper * NUM_BITS_IN_BYTE) + sw_aux[num_oper];
 		long bt_dest = sw_dest[num_oper];
 		//std::cout << "    " << pct_bit_idx(bt_src) << "-" << pct_bit_idx(bt_dest);
 		target_bits.swap(bt_dest, bt_src);
+	}
+
+	t_1byte	byte_full_invert(t_1byte by_tgt){
+		t_1byte by_rflx = by_tgt;
+		s_bit_row op_bits(&by_rflx, true);
+		op_bits.swap(0,7);
+		op_bits.swap(1,6);
+		op_bits.swap(2,5);
+		op_bits.swap(3,4);
+		return by_rflx;
+	}
+	
+	t_1byte	byte_halfs_invert(t_1byte by_tgt){
+		t_1byte by_rflx = by_tgt;
+		s_bit_row op_bits(&by_rflx, true);
+		op_bits.swap(0,3);
+		op_bits.swap(1,2);
+		op_bits.swap(4,7);
+		op_bits.swap(5,6);
+		return by_rflx;
+	}
+	
+	t_1byte	byte_hi_lo_swap(t_1byte by_tgt){
+		t_1byte by_rflx = by_tgt;
+		s_bit_row op_bits(&by_rflx, true);
+		op_bits.swap(0,4);
+		op_bits.swap(1,5);
+		op_bits.swap(2,6);
+		op_bits.swap(3,7);
+		return by_rflx;
+	}
+	
+	void	byte_reflex(long num_oper){
+		char by_rf_op = sw_aux[num_oper];
+		t_1byte by_tgt = target_bytes[num_oper];
+		t_1byte by_rflx = by_tgt;
+		switch(by_rf_op){
+			case 0:
+				by_rflx = byte_full_invert(by_tgt);
+				break;
+			case 1:
+				by_rflx = byte_halfs_invert(by_tgt);
+				break;
+			case 2:
+				by_rflx = byte_hi_lo_swap(by_tgt);
+				break;
+		}
+		target_bytes[num_oper] = by_rflx;
 	}
 
 	void	encry_bytes(){
@@ -236,10 +300,20 @@ public:
 		CRY_CK(encry);
 		CRY_CK(! target_bits.is_empty());
 		bits_part = true;
-		init_sw_src();
+		init_sw_aux();
 		init_sw_dest();
 		for(long aa = 0; aa < target_bytes.size(); aa++){
 			bit_swap(aa);
+		}
+	}
+
+	void	encry_reflex(){
+		CRY_CK(encry);
+		CRY_CK(! target_bytes.is_empty());
+		bits_part = false;
+		init_rf_aux();
+		for(long aa = 0; aa < target_bytes.size(); aa++){
+			byte_reflex(aa);
 		}
 	}
 
@@ -255,10 +329,19 @@ public:
 	void	decry_bits(){
 		CRY_CK(! encry);
 		bits_part = true;
-		init_sw_src();
+		init_sw_aux();
 		init_sw_dest();
 		for(long aa = (target_bytes.size() - 1); aa >= 0; aa--){
 			bit_swap(aa);
+		}
+	}
+
+	void	decry_reflex(){
+		CRY_CK(! encry);
+		bits_part = false;
+		init_rf_aux();
+		for(long aa = (target_bytes.size() - 1); aa >= 0; aa--){
+			byte_reflex(aa);
 		}
 	}
 
@@ -269,7 +352,9 @@ public:
 		if(encry){
 			encry_bytes();
 			encry_bits();
+			encry_reflex();
 		} else {
+			decry_reflex();
 			decry_bits();
 			decry_bytes();
 		}

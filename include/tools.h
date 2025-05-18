@@ -252,6 +252,13 @@ t_1byte get_byte_val(t_1byte b_exa, bool upper){
 	case 'f':
 		val = 15;
 		break;
+	default:
+		error_code_t err_cod = k_tools_08_exception;
+		DBG_THROW_CK(k_tools_08_exception != k_tools_08_exception);
+		throw err_cod;
+		std::cerr << "func: 'get_byte_val'" << std::endl;
+		abort_func(0); 
+		break;
 	}
 	if (upper) {
 		val = (t_1byte) (val << (t_1byte) 4);
@@ -849,19 +856,42 @@ public:
 		return (SZ_ATTRIB * sizeof(obj_t));
 	}
 	
-	void		bytes_to_hex_bytes(row<char>& hex_str){
+	void		bytes_to_hex_bytes(row<char>& hex_bytes){
 		char hexval[16] = {'0', '1', '2', '3', '4', '5', '6', '7', 
 							'8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 		const t_1byte* by_arr = get_data();
 		long sz_arr = get_data_sz();
 		long hex_sz = sz_arr * 2;
 
-		hex_str.clear();
-		hex_str.fill('0', hex_sz);
+		hex_bytes.clear();
+		hex_bytes.fill('0', hex_sz);
 
 		for(long aa = 0; aa < sz_arr; aa++){
-			hex_str[aa * 2] = hexval[lo_hex_as_int(by_arr[aa])];
-			hex_str[(aa * 2) + 1] = hexval[hi_hex_as_int(by_arr[aa])];
+			hex_bytes[aa * 2] = hexval[lo_hex_as_int(by_arr[aa])];
+			hex_bytes[(aa * 2) + 1] = hexval[hi_hex_as_int(by_arr[aa])];
+		}
+	}
+	
+	void		hex_bytes_to_bytes(row<char>& byte_arr){
+		const t_1byte* by_arr = get_data();
+		long sz_arr = get_data_sz();
+		
+		byte_arr.clear();
+		if ((sz_arr % 2) != 0) {
+			error_code_t err_cod = k_tools_07_exception;
+			DBG_THROW_CK(k_tools_07_exception != k_tools_07_exception);
+			throw err_cod;
+			std::cerr << "func: 'row::hex_bytes_to_bytes'" << std::endl;
+			abort_func(0); 
+			return;
+		}
+		long bytes_sz = sz_arr / 2;
+		byte_arr.fill('0', bytes_sz);
+		
+		for (long ii = 0; ii < byte_arr.size(); ii++) {
+			t_1byte b1 = by_arr[ii * 2];
+			t_1byte b2 = by_arr[(ii * 2) + 1];
+			byte_arr[ii] = calc_val_byte(b1, b2);
 		}
 	}
 	
