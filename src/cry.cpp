@@ -14,6 +14,8 @@ cry encryptor functions. no-trace style encryptor.
 
 typedef std::ostringstream bj_ostr_stream;
 
+#define HEX_LINE_SZ 70
+
 DEFINE_MEM_STATS;
 
 char* cry_vr_msg = NULL_PT;
@@ -550,165 +552,22 @@ cry_encryptor::write_encry_file(const char* out_nm)
 	if(with_sha){
 		target_sha = sha_txt_of_arr((uchar_t*)target_bytes.get_data(), target_bytes.size());
 		row<char> txt_hd;
-		set_info_header_encry(txt_hd, target_sha, cry_data_sz, as_hex);
-		out_stm.write((const char*)txt_hd.get_data(), txt_hd.get_data_sz());
 		
 		bool is_hex_txt = as_hex;
 		if(is_hex_txt){
-			target_bytes.bytes_to_hex_bytes(hex_bytes);
+			target_bytes.bytes_to_hex_bytes(hex_bytes, HEX_LINE_SZ);
 			
 			cry_data = (unsigned char*)hex_bytes.get_data();
 			cry_data_sz = hex_bytes.get_data_sz();
-			CRY_CK(cry_data_sz == target_bytes.get_data_sz() * 2);
 		}
 		
+		set_info_header_encry(txt_hd, target_sha, cry_data_sz, as_hex);
+		out_stm.write((const char*)txt_hd.get_data(), txt_hd.get_data_sz());
 	}
 
 	out_stm.write((const char*)cry_data, cry_data_sz);
 	out_stm.close();
 }
-
-/*
-void
-cry_encryptor::init_target_decry(){
-	if(! has_input()){
-		return;
-	}
-
-	std::ostream& os = std::cout;
-
-	unsigned char sha_arr[NUM_BYTES_SHA2];
-	memset(sha_arr, 0, NUM_BYTES_SHA2);
-
-	CRY_CK(pt_file_data == NULL_PT);
-	CRY_CK(file_data_sz == 0);
-
-	std::ifstream& in_stm = input_stm;
-
-	pt_file_data = read_file(in_stm, file_data_sz); 
-
-	if(pt_file_data == NULL_PT){
-		os << "Could not read file " << input_file_nm << std::endl;
-		return;
-	}
-
-	CRY_CK(cry_vr_msg != NULL_PT);
-	CRY_CK(cry_vr_msg_sz != 0);
-
-	if(file_data_sz > cry_vr_msg_sz){
-		int cmp_hd = memcmp(pt_file_data, cry_vr_msg, cry_vr_msg_sz);
-		if(with_sha && (cmp_hd != 0)){
-			os << "File " << input_file_nm << " does not seem to be a " << std::endl;
-			os << "-----------------------" << std::endl;
-			os << cry_vr_msg << std::endl;
-			os << "-----------------------" << std::endl;
-			os << "file." << std::endl;
-			os << std::endl;
-			os << "If it is a raw encrypted file " 
-				<< "(using the -r option), "
-				<< " the -r option must be selected for " 
-				<< "decryption too." << std::endl;
-			os << std::endl;
-			os << cry_help;
-			end_target();
-			return;
-		}
-		if(! with_sha && (cmp_hd == 0)){
-			os << "File " << input_file_nm << " seems to be encrypted ";
-			os << "without the -r (row) option." << std::endl;
-			os << std::endl;
-			os << "If you get a messy file try without it." 
-				<< std::endl;
-		}
-	}
-
-	long encry_hd_sz = 0; 
-		
-	if(with_sha){
-		encry_hd_sz = cry_vr_msg_sz + sizeof(long);
-	}
-
-	if(file_data_sz < encry_hd_sz){
-		os << "Not a cry formated file " << input_file_nm << std::endl;
-		end_target();
-		return;
-	}
-
-	long cry_data_sz = file_data_sz;
-	unsigned char* cry_data = 
-		(unsigned char*)(pt_file_data + encry_hd_sz);
-
-	if(with_sha){
-		cry_data_sz = pt_as((pt_file_data + cry_vr_msg_sz), long);
-
-		long orig_cry_data_sz = file_data_sz - encry_hd_sz - NUM_BYTES_SHA2;
-		if((orig_cry_data_sz < 0) || (cry_data_sz != orig_cry_data_sz)){
-			os << "Corrupt cry encrypted file " << input_file_nm << std::endl;
-			end_target();
-			return;
-		}
-
-		unsigned char* cry_sha = sha_arr;
-		sha2(cry_data, cry_data_sz, cry_sha, 0); // EXTERNAL SHA
-
-		void* orig_cry_sha = cry_data + cry_data_sz;
-		int cmp_val = memcmp(cry_sha, orig_cry_sha, NUM_BYTES_SHA2);
-		if(cmp_val != 0){
-			os << "Verification BEFORE decry failed with " 
-				<< "cry encrypted file" << input_file_nm 
-				<< std::endl;
-			os << "File is corrupted." << std::endl;
-			end_target();
-			return;
-		}
-	}
-
-	target_bytes.init_data((t_1byte*)cry_data, cry_data_sz);
-	target_bits.init_data((t_1byte*)cry_data, cry_data_sz);
-}
-
-void	
-cry_encryptor::write_encry_file(const char* out_nm)
-{
-	std::ostream& os = std::cout;
-
-	if(target_bytes.is_empty()){
-		return;
-	}
-
-	std::ofstream out_stm;
-	out_stm.open(out_nm, std::ios::binary);
-	if(! out_stm.good() || ! out_stm.is_open()){
-		os << "Archivo de salida " << out_nm << 
-			" invalido." << std::endl;
-		return;
-	}
-	t_dword pos = out_stm.tellp();
-	MARK_USED(pos);
-	CRY_CK(pos == 0);
-
-	unsigned char* cry_data = (unsigned char*)target_bytes.get_data();
-	long cry_data_sz = target_bytes.size();
-
-	unsigned char sha_arr[NUM_BYTES_SHA2];
-	unsigned char* cry_sha = sha_arr;
-	if(with_sha){
-		memset(sha_arr, 0, NUM_BYTES_SHA2);
-
-		sha2((unsigned char*)cry_data, cry_data_sz, cry_sha, 0); // EXTERNAL SHA
-
-		out_stm.write(cry_vr_msg, cry_vr_msg_sz);
-		wrt_val(out_stm, cry_data_sz);
-	}
-
-	out_stm.write((const char*)cry_data, cry_data_sz);
-
-	if(with_sha){
-		out_stm.write((const char*)cry_sha, NUM_BYTES_SHA2); // EXTERNAL SHA
-	}
-	out_stm.close();
-}
-*/
 
 void	
 cry_encryptor::write_decry_file(const char* out_nm)
@@ -931,56 +790,6 @@ int	main(int argc, char** argv){
 	return 0;
 }
 
-
-// test_cry.txt -e
-// test_cry.txt.encry -d
-
-// win32
-// CAPSLOCK([lExpression])
-
-// lin
-// ioctl()
-
-/*
-	AFTER encrypt
-		byte[] hex_enc_dat = convert.bytes_to_hex_bytes(enc_dat);
-		
-	BEFORE decrypt
-		byte[] enc_dat = convert.hex_bytes_to_bytes(hex_enc);
-
-	public static byte[] bytes_to_hex_bytes(byte[] the_bytes) {
-		assert (the_bytes != null);
-		int hx_sz = the_bytes.length * 2;
-		byte[] hx_bytes = new byte[hx_sz];
-		for (int ii = 0; ii < the_bytes.length; ii++) {
-			String hx_str = String.format("%02x", the_bytes[ii]);
-			byte[] hx_val = hx_str.getBytes();
-			assert (hx_val.length == 2);
-			hx_bytes[ii * 2] = hx_val[0];
-			hx_bytes[(ii * 2) + 1] = hx_val[1];
-		}
-		return hx_bytes;
-	}
-
-	public static byte[] hex_bytes_to_bytes(byte[] the_hx_bytes) {
-		assert (the_hx_bytes != null);
-		if ((the_hx_bytes.length % 2) != 0) {
-			throw new bad_emetcode(2, L.invalid_length);
-		}
-		int bytes_sz = the_hx_bytes.length / 2;
-		byte[] the_bytes = new byte[bytes_sz];
-		for (int ii = 0; ii < the_bytes.length; ii++) {
-			byte b1 = the_hx_bytes[ii * 2];
-			byte b2 = the_hx_bytes[(ii * 2) + 1];
-			the_bytes[ii] = calc_val_byte(b1, b2);
-		}
-		return the_bytes;
-	}
-
-
-
-*/
-
 void copy_string_in_arr(ch_string& src, row<char>& dest, row_index dest_beg_ii = 0){ 
 	for(row_index aa = 0; aa < (row_index)src.size(); aa++){
 		dest[dest_beg_ii + aa] = src[aa];
@@ -1015,7 +824,6 @@ void
 cry_encryptor::set_info_header_encry(row<char>& txt_hd, ch_string& data_sha, long data_size, bool tgt_as_hex_txt){
 	txt_hd.clear();
 	
-	if(tgt_as_hex_txt){ data_size = data_size * 2; }
 	ch_string dat_sz_str = long_to_str(data_size);
 	ch_string hex_txt = (tgt_as_hex_txt)?("true"):("false");
 	

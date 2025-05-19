@@ -856,19 +856,48 @@ public:
 		return (SZ_ATTRIB * sizeof(obj_t));
 	}
 	
-	void		bytes_to_hex_bytes(row<t_1byte>& hex_bytes){
+	void		bytes_to_hex_bytes(row<t_1byte>& hex_bytes, int ln_sz = 0){
 		char hexval[16] = {'0', '1', '2', '3', '4', '5', '6', '7', 
 							'8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 		const t_1byte* by_arr = get_data();
 		long sz_arr = get_data_sz();
 		long hex_sz = sz_arr * 2;
+		if(ln_sz > 0){ 
+			long num_ln = (hex_sz / ln_sz) + 1; 
+			hex_sz += (num_ln * 2);
+		}
 
 		hex_bytes.clear();
-		hex_bytes.fill('0', hex_sz);
+		//hex_bytes.fill('0', hex_sz);
+		hex_bytes.set_cap(hex_sz);
 
+		/*
 		for(long aa = 0; aa < sz_arr; aa++){
+			hex_bytes.inc_sz();
+			hex_bytes.inc_sz();
+			TOOLS_CK(((aa * 2) + 1) < hex_bytes.size());
+			
 			hex_bytes[aa * 2] = hexval[lo_hex_as_int(by_arr[aa])];
 			hex_bytes[(aa * 2) + 1] = hexval[hi_hex_as_int(by_arr[aa])];
+			
+			if((ln_sz > 0) && ((aa % ln_sz) == 0)){ 
+				hex_bytes.inc_sz();
+				hex_bytes.inc_sz();
+				TOOLS_CK(((aa * 2) + 3) < hex_bytes.size());
+				
+				hex_bytes[(aa * 2) + 2] = ' ';
+				hex_bytes[(aa * 2) + 3] = '\n';
+			}
+		}
+		*/
+		for(long aa = 0; aa < sz_arr; aa++){
+			hex_bytes.push(hexval[lo_hex_as_int(by_arr[aa])]);
+			hex_bytes.push(hexval[hi_hex_as_int(by_arr[aa])]);
+			
+			if((ln_sz > 0) && ((aa % ln_sz) == 0)){ 
+				hex_bytes.push(' ');
+				hex_bytes.push('\n');
+			}
 		}
 	}
 	
@@ -886,12 +915,18 @@ public:
 			return;
 		}
 		long bytes_sz = sz_arr / 2;
-		byte_arr.fill('0', bytes_sz);
+		//byte_arr.fill('0', bytes_sz);
+		byte_arr.set_cap(bytes_sz);
 		
-		for (long ii = 0; ii < byte_arr.size(); ii++) {
+		for (long ii = 0; ((ii * 2) + 1) < sz_arr; ii++) {
 			t_1byte b1 = by_arr[ii * 2];
 			t_1byte b2 = by_arr[(ii * 2) + 1];
-			byte_arr[ii] = calc_val_byte(b1, b2);
+			if(b2 == '\n'){
+				TOOLS_CK(b1 == ' ');
+				continue;
+			}
+			t_1byte out_bb = calc_val_byte(b1, b2);
+			byte_arr.push(out_bb);
 		}
 	}
 	
