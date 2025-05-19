@@ -75,6 +75,8 @@ private:
 	t_1byte*			pt_file_data;
 	long				file_data_sz;
 
+	row<t_1byte>		hex_bytes;
+	
 	s_row<t_1byte>		target_bytes;
 	s_bit_row			target_bits;
 
@@ -402,8 +404,8 @@ public:
 		return (input_stm.good() && input_stm.is_open());
 	}
 	
-	void 	set_info_header_encry(row<char>& txt_hd, ch_string& data_sha, long data_size);
-	void 	get_info_header_decry(s_row<t_1byte>& tgt, ch_string& data_sha, char*& pt_data, long& data_sz);
+	void 	set_info_header_encry(row<char>& txt_hd, ch_string& data_sha, long data_size, bool tgt_as_hex_txt);
+	void 	get_info_header_decry(s_row<t_1byte>& tgt, ch_string& data_sha, char*& pt_data, long& data_sz, bool& tgt_as_hex_txt);
 	
 	void 	print_sha();
 

@@ -44,6 +44,7 @@ ch_string cry_info = "cry_use.txt";
 
 ch_string data_sha_field = "data_sha=";
 ch_string data_size_field = "data_size=";
+ch_string hex_text_field = "data_in_txt_of_hex=";
 ch_string end_header = "<<<END_OF_HEADER>>>\n";
 
 int WITH_SHA_TOP_HEADER_SZ = 500; // num bytes top header
@@ -475,8 +476,8 @@ cry_encryptor::init_target_decry(){
 		}
 	}
 
-	long cry_data_sz = file_data_sz;
 	unsigned char* cry_data = (unsigned char*)(pt_file_data);
+	long cry_data_sz = file_data_sz;
 	
 	if(with_sha){
 		
@@ -486,7 +487,10 @@ cry_encryptor::init_target_decry(){
 		ch_string in_sha = "";
 		long in_data_sz = 0;
 		char* in_data = NULL_PT;
-		get_info_header_decry(tmp_hd, in_sha, in_data, in_data_sz);
+		bool in_hex = false;
+		get_info_header_decry(tmp_hd, in_sha, in_data, in_data_sz, in_hex);
+		bool is_hex_txt = in_hex;
+		// use hex_bytes row
 		
 		if(in_data == NULL_PT){
 			os << "Corrupt cry encrypted file " << input_file_nm << std::endl;
@@ -497,15 +501,23 @@ cry_encryptor::init_target_decry(){
 		ch_string calc_sha = sha_txt_of_arr((uchar_t*)in_data, in_data_sz);
 		if(calc_sha != in_sha){
 			os << "Verification BEFORE decry failed with " 
-				<< "cry encrypted file" << input_file_nm 
+				<< "cry encrypted file \n" << input_file_nm 
 				<< std::endl;
 			os << "File is corrupted." << std::endl;
 			end_target();
 			return;
 		}
 
-		cry_data_sz = in_data_sz;
 		cry_data = (unsigned char*)(in_data);
+		cry_data_sz = in_data_sz;
+		
+		if(is_hex_txt){
+			target_bytes.init_data((t_1byte*)cry_data, cry_data_sz);
+			target_bytes.hex_bytes_to_bytes(hex_bytes);
+			
+			cry_data = (unsigned char*)hex_bytes.get_data();
+			cry_data_sz = hex_bytes.get_data_sz();
+		}
 	}
 
 	target_bytes.init_data((t_1byte*)cry_data, cry_data_sz);
@@ -538,8 +550,17 @@ cry_encryptor::write_encry_file(const char* out_nm)
 	if(with_sha){
 		target_sha = sha_txt_of_arr((uchar_t*)target_bytes.get_data(), target_bytes.size());
 		row<char> txt_hd;
-		set_info_header_encry(txt_hd, target_sha, cry_data_sz);
+		set_info_header_encry(txt_hd, target_sha, cry_data_sz, as_hex);
 		out_stm.write((const char*)txt_hd.get_data(), txt_hd.get_data_sz());
+		
+		bool is_hex_txt = as_hex;
+		if(is_hex_txt){
+			target_bytes.hex_bytes_to_bytes(hex_bytes);
+			
+			cry_data = (unsigned char*)hex_bytes.get_data();
+			cry_data_sz = hex_bytes.get_data_sz();
+		}
+		
 	}
 
 	out_stm.write((const char*)cry_data, cry_data_sz);
@@ -990,10 +1011,11 @@ long_to_str(long val){
 
 
 void 
-cry_encryptor::set_info_header_encry(row<char>& txt_hd, ch_string& data_sha, long data_size){
+cry_encryptor::set_info_header_encry(row<char>& txt_hd, ch_string& data_sha, long data_size, bool tgt_as_hex_txt){
 	txt_hd.clear();
 	
 	ch_string dat_sz_str = long_to_str(data_size);
+	ch_string hex_txt = (tgt_as_hex_txt)?("true"):("false");
 	
 	txt_hd << cry_vr4_msg;
 	txt_hd << "\n";
@@ -1003,11 +1025,14 @@ cry_encryptor::set_info_header_encry(row<char>& txt_hd, ch_string& data_sha, lon
 	txt_hd << data_size_field;
 	txt_hd << dat_sz_str;
 	txt_hd << "\n";
+	txt_hd << hex_text_field;
+	txt_hd << hex_txt;
+	txt_hd << "\n";
 	txt_hd << end_header;
 }
 
 void 
-cry_encryptor::get_info_header_decry(s_row<t_1byte>& tgt, ch_string& data_sha, char*& pt_data, long& data_sz){
+cry_encryptor::get_info_header_decry(s_row<t_1byte>& tgt, ch_string& data_sha, char*& pt_data, long& data_sz, bool& tgt_as_hex_txt){
 	const char* all_data = tgt.get_data();
 	char* pt_rest_data = (char*)all_data;
 	long rest_data_sz = tgt.get_data_sz();
@@ -1033,6 +1058,16 @@ cry_encryptor::get_info_header_decry(s_row<t_1byte>& tgt, ch_string& data_sha, c
 			rd_data_sz = parse_long_str(val2);
 			//std::cout << "FOUND data_size_field=" << val2 << std::endl;
 		}
+		if(ln.starts_with(hex_text_field)){
+			ch_string val3 = ln.substr(hex_text_field.size());
+			val3.pop_back();
+			if(val3 == "true"){
+				tgt_as_hex_txt = true;
+			} else {
+				tgt_as_hex_txt = false;
+			}
+			//std::cout << "FOUND hex_text_field=" << val3 << std::endl;
+		}
 		if(ln == end_header){
 			//std::cout << "FOUND_END_HEADER" << std::endl;
 			break;
@@ -1054,7 +1089,7 @@ test_header(cry_encryptor& cry_engine){
 	row<char> txt_hd;
 	ch_string the_sha = "ESTE_ES_EL_SHA";
 	long the_sz = 123455876;
-	cry_engine.set_info_header_encry(txt_hd, the_sha, the_sz);
+	cry_engine.set_info_header_encry(txt_hd, the_sha, the_sz, cry_engine.as_hex);
 
 	std::cout << "NEW_SZ =" << txt_hd.size() << std::endl;
 	std::cout << "HD=\n" << txt_hd.get_c_array() << std::endl;
@@ -1065,10 +1100,10 @@ test_header(cry_encryptor& cry_engine){
 	ch_string in_sha = "";
 	char* in_data = NULL_PT;
 	long in_sz = 0;
-	cry_engine.get_info_header_decry(tgt, in_sha, in_data, in_sz);
+	bool in_hex = false;
+	cry_engine.get_info_header_decry(tgt, in_sha, in_data, in_sz, in_hex);
 	os << "in_sha=" << in_sha << std::endl; 
 	os << "in_sz=" << in_sz << std::endl; 
+	os << "in_hex=" << in_hex << std::endl; 
 }
 
-
-//	void		row::as_hex_txt(row<char>& hex_str){

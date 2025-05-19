@@ -856,7 +856,7 @@ public:
 		return (SZ_ATTRIB * sizeof(obj_t));
 	}
 	
-	void		bytes_to_hex_bytes(row<char>& hex_bytes){
+	void		bytes_to_hex_bytes(row<t_1byte>& hex_bytes){
 		char hexval[16] = {'0', '1', '2', '3', '4', '5', '6', '7', 
 							'8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 		const t_1byte* by_arr = get_data();
@@ -872,7 +872,7 @@ public:
 		}
 	}
 	
-	void		hex_bytes_to_bytes(row<char>& byte_arr){
+	void		hex_bytes_to_bytes(row<t_1byte>& byte_arr){
 		const t_1byte* by_arr = get_data();
 		long sz_arr = get_data_sz();
 		
