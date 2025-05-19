@@ -368,6 +368,7 @@ public:
 		}
 		ch_string o_nm;
 		ch_string encry_ext = ".encry";
+		if(as_hex){ encry_ext += ".txt"; }
 		if(encry){
 			o_nm = input_file_nm + encry_ext;
 			write_encry_file(o_nm.c_str());

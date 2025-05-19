@@ -498,16 +498,6 @@ cry_encryptor::init_target_decry(){
 			return;
 		}
 		
-		ch_string calc_sha = sha_txt_of_arr((uchar_t*)in_data, in_data_sz);
-		if(calc_sha != in_sha){
-			os << "Verification BEFORE decry failed with " 
-				<< "cry encrypted file \n" << input_file_nm 
-				<< std::endl;
-			os << "File is corrupted." << std::endl;
-			end_target();
-			return;
-		}
-
 		cry_data = (unsigned char*)(in_data);
 		cry_data_sz = in_data_sz;
 		
@@ -517,6 +507,16 @@ cry_encryptor::init_target_decry(){
 			
 			cry_data = (unsigned char*)hex_bytes.get_data();
 			cry_data_sz = hex_bytes.get_data_sz();
+		}
+		
+		ch_string calc_sha = sha_txt_of_arr((uchar_t*)cry_data, cry_data_sz);
+		if(calc_sha != in_sha){
+			os << "Verification BEFORE decry failed with " 
+				<< "cry encrypted file \n" << input_file_nm 
+				<< std::endl;
+			os << "File is corrupted." << std::endl;
+			end_target();
+			return;
 		}
 	}
 
@@ -555,10 +555,11 @@ cry_encryptor::write_encry_file(const char* out_nm)
 		
 		bool is_hex_txt = as_hex;
 		if(is_hex_txt){
-			target_bytes.hex_bytes_to_bytes(hex_bytes);
+			target_bytes.bytes_to_hex_bytes(hex_bytes);
 			
 			cry_data = (unsigned char*)hex_bytes.get_data();
 			cry_data_sz = hex_bytes.get_data_sz();
+			CRY_CK(cry_data_sz == target_bytes.get_data_sz() * 2);
 		}
 		
 	}
@@ -1014,6 +1015,7 @@ void
 cry_encryptor::set_info_header_encry(row<char>& txt_hd, ch_string& data_sha, long data_size, bool tgt_as_hex_txt){
 	txt_hd.clear();
 	
+	if(tgt_as_hex_txt){ data_size = data_size * 2; }
 	ch_string dat_sz_str = long_to_str(data_size);
 	ch_string hex_txt = (tgt_as_hex_txt)?("true"):("false");
 	
