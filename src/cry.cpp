@@ -218,16 +218,16 @@ cry_encryptor::ask_key(secure_row<t_1byte>& the_key){
 	secure_gets(tmp_str);
 	os << " * " << std::endl;
 
-	long key_sz = 0;
-	char* key_data = NULL_PT;
 	std::ifstream in_stm;
 
 	tmp_str.push(0);
 	const char* key_f_nm = tmp_str.get_data();
 	if(strcmp(key_f_nm, input_file_nm.c_str()) != 0){
 		if(open_ifile(tmp_str.get_data(), in_stm)){
-			key_data = read_file(in_stm, key_sz); 
-			file_bytes.init_data(key_data, key_sz);
+			long file_sz = 0;
+			char* file_data = NULL_PT;
+			file_data = read_file(in_stm, file_sz); 
+			file_bytes.init_data(file_data, file_sz);
 			os << "USING KEY BASE FILE" << std::endl;
 		} 
 	} else {
