@@ -229,6 +229,7 @@ cry_encryptor::ask_key(secure_row<t_1byte>& the_key){
 			file_data = read_file(in_stm, file_sz); 
 			file_bytes.init_data(file_data, file_sz);
 			os << "USING KEY BASE FILE" << std::endl;
+			os << "FILE_SZ=" << file_bytes.size() << std::endl;
 		} 
 	} else {
 		os << "key base file cannot be the target file." << std::endl;
@@ -237,11 +238,13 @@ cry_encryptor::ask_key(secure_row<t_1byte>& the_key){
 	tmp_str.pop();
 
 	if(! tmp_str.is_empty()){
+		/*
 		unsigned long* ini_arr = (unsigned long*)(tmp_str.get_data());
 		long ini_arr_sz = (tmp_str.get_data_sz() / sizeof(long));
 
 		for_key.init_with_array(ini_arr, ini_arr_sz);
-
+		*/
+		
 		if(file_bytes.is_empty()){
 			tmp_str.append_to(tmp_key);
 		}
@@ -267,6 +270,7 @@ cry_encryptor::ask_key(secure_row<t_1byte>& the_key){
 					num_2 = -1;
 				}
 			}
+			os << "KEY_SZ=" << tmp_key.size() << std::endl;
 		}
 	}
 
@@ -275,6 +279,13 @@ cry_encryptor::ask_key(secure_row<t_1byte>& the_key){
 		t_1byte* dat = (t_1byte*)(file_bytes.get_data());
 		free(dat);
 		file_bytes.clear();
+	}
+
+	if(! tmp_key.is_empty()){
+		unsigned long* ini_arr = (unsigned long*)(tmp_key.get_data());
+		long ini_arr_sz = (tmp_key.get_data_sz() / sizeof(long));
+
+		for_key.init_with_array(ini_arr, ini_arr_sz);
 	}
 
 	tmp_key.move_to(the_key);
